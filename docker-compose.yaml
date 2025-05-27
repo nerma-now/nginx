@@ -6,13 +6,13 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:rw
+      - ./nginx/conf.d:/etc/nginx/conf.d
       - ./certbot/www:/var/www/certbot
-      - ./certbot/conf:/etc/nginx/ssl
-    depends_on:
-      - app
+      - ./certbot/conf:/etc/letsencrypt  # Изменили на /etc/letsencrypt
     networks:
       - webnet
+    depends_on:
+      - app
     command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
 
   certbot:

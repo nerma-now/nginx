@@ -1,0 +1,68 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/nginx/ssl
+    networks:
+      - webnet
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - webnet
+    depends_on:
+      - nginx
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: app
+    environment:
+      - NODE_ENV=production
+    networks:
+      - webnet
+    depends_on:
+      - postgres
+      - adminer
+    ports:
+      - "3000:3000"
+
+  postgres:
+    image: postgres:16
+    container_name: my_postgres
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypass
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - webnet
+
+  adminer:
+    image: adminer
+    container_name: my_adminer
+    depends_on:
+      - postgres
+    networks:
+      - webnet
+    ports:
+      - "8080:8080"
+
+networks:
+  webnet:
